@@ -10,7 +10,7 @@ https://github.com/preuss812/FRC_2013
 If you want to check-in code, please send me your SSH public key.
 
 
-PID CONTROLLER
+# PID CONTROLLER
 The PID controller class [1] is something we are looking at using to synchronize the rotation distance across two Jaguar controlled motors.
 
 Sample code is available from the Nerdherd team from 2012 [2], please take a look. Additionally there is a discussion thread on Chief Delphi about using the PID controller [3].
@@ -20,7 +20,7 @@ Sample code is available from the Nerdherd team from 2012 [2], please take a loo
 3. http://www.chiefdelphi.com/forums/showthread.php?t=72918
 
 
-AS514B ENCODER
+# AS514B ENCODER
 This is a magnetic field sensing encoder [4]. The wiring diagram for FRC usage [5] is correct. We failed to ground the CSn pin at first, but figured that out and fixed it.
 
 The AS514B encoder samples 4096 steps per 360 degrees, therefore the angular distance traveled per sample is 360/4096 or 0.087 degrees. This is reflected in the code.
@@ -30,7 +30,7 @@ The AS514B encoder samples 4096 steps per 360 degrees, therefore the angular dis
 
 
 
-WPILib 
+# WPILib 
 This is a high-level robotics programming library for FIRST provided by the Worcester Polytechnic Institute (WPI). It is available in Java and C++. Team812 uses the C++ version.
 
 A WPIlib Users Guide [6] is provided by WPI. It has not been updated since 2008, however, it remains generally applicable to the 2013 code base and items provided in the Kit Of Parts (KOP).
