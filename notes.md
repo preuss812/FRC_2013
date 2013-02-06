@@ -13,12 +13,12 @@ If you want to check-in code, please send me your SSH public key.
 # PID CONTROLLER
 The PID controller class [1] is something we are looking at using to synchronize the rotation distance across two Jaguar controlled motors.
 
-Sample code is available from the Nerdherd team from 2012 [2], please take a look. Additionally there is a discussion thread on Chief Delphi about using the PID controller [3].
+Sample code is available from the Nerdherd team from 2012 [2], please take a look. Additionally there is a discussion thread on Chief Delphi about using the PID controller [3]. And here is a paper written by Matt Krass of Team 358 in April 2006. [3.5]
 
 1. http://www.virtualroadside.com/WPILib/class_p_i_d_controller.html
 2. https://github.com/nerdherd/frc-2012/blob/master/drive.cpp
 3. http://www.chiefdelphi.com/forums/showthread.php?t=72918
-
+3.5 http://www.chiefdelphi.com/media/papers/download/1829
 
 # AS514B ENCODER
 This is a magnetic field sensing encoder [4]. The wiring diagram for FRC usage [5] is correct. We failed to ground the CSn pin at first, but figured that out and fixed it.
