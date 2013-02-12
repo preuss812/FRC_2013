@@ -71,10 +71,6 @@ class RobotDemo : public SimpleRobot
 	
 public:
 	RobotDemo(void):
-	//	RobotDrive(UINT32 frontLeftMotorChannel, UINT32 rearLeftMotorChannel,
-	//					UINT32 frontRightMotorChannel, UINT32 rearRightMotorChannel);
-		//myRobot(3,4,2,1),
-//		myRobot(1,2),
 		leftStick(1),		// as they are declared above.
 		rightStick(2), // right stick
 		climbStick(3),
@@ -83,7 +79,6 @@ public:
 		encoder_1(5,6),   // digital I/O port 5 == chan A, port 6 == chan B
 		encoder_2(8,9)	// digital I/O port 8 == chan A, port 9 == chan B
 	{
-//		myRobot.SetExpiration(0.1);  
 		Motor1 = new Jaguar(1);
 		Motor2 = new Jaguar(2);
 		Motor3 = new Jaguar(3); // PWM 3
@@ -95,6 +90,7 @@ public:
 		pid_controller_2 = new PIDController812;
 
 		myRobot = new RobotDrive(Motor1, Motor2);
+		myRobot->SetExpiration(0.1);
 	}
 
 	/**
@@ -155,9 +151,9 @@ public:
 		const int periods = 100;
 		float adjustment;
 		
-//		myRobot.SetSafetyEnabled(true);
-//		myRobot.SetInvertedMotor(RobotDrive::kRearLeftMotor, true); //right
-//		myRobot.SetInvertedMotor(RobotDrive::kRearRightMotor, true); //left
+		myRobot->SetSafetyEnabled(true);
+		myRobot->SetInvertedMotor(RobotDrive::kRearLeftMotor, true); //right
+		myRobot->SetInvertedMotor(RobotDrive::kRearRightMotor, true); //left
 		ferroDetector.Start();
 		encoder_1.Start();
 		encoder_2.Start();
@@ -165,13 +161,17 @@ public:
 		encoder_2.SetDistancePerPulse(360.0/4096.0);
 		
 		pid_controller_2->Reset();
-//		pid_controller_2->Enable();
 		
 		while (IsOperatorControl())
 		{
 			//myRobot.ArcadeDrive(rightStick); // drive with arcade style (use right stick)
-//		    myRobot.TankDrive(leftStick, rightStick);
+		    myRobot->TankDrive(leftStick, rightStick);
 			Wait(0.005);				// wait for a motor update time
+
+/* 2012-02-12
+ * This code section was used for PID controller testing. It is disabled
+ * in favor of TankDrive listed above
+ * 
 			if(rightStick.GetRawButton(1))
 			{
 				jaguarSpeed_1 += 0.05;
@@ -184,6 +184,9 @@ public:
 //				pid_controller_2->SetSetpoint(encoder_1.GetRate());
 //				fprintf(stderr,"OnTarget? %d\n", pid_controller_2->OnTarget());
 			}
+--- end of PID controller testing code 
+*/
+			
 			if(leftStick.GetRawButton(1) )
 			{
 				spike.Set(Relay::kForward);
