@@ -98,43 +98,82 @@ public:
 	 */
 	void Autonomous(void)
 	{
-	//	myRobot.SetSafetyEnabled(false);
+		float jaguarSpeed_1 = 0.0;
+		float jaguarSpeed_2 = 0.0;
+		float jagAdjust;
+		double sumEncoderRates_1;
+		double sumEncoderRates_2;
+		int countRates = 0;
+		const int periods = 100;
+		float adjustment;
+
+		//	myRobot.SetSafetyEnabled(false);
 		// Distance = velocity / time; 
 		// Assume instaneous acceleration to make things easy
 		float distance = 40.0; // feet
 		float velocity = 10.0; // feet / sec
 		float drive_time = distance / velocity; // t (sec) = d (feet) / v (feet/sec)
+		float time_driven = 0;
 		
 		fprintf(stderr,"autonomous: drive_time %f\n", drive_time);
-		Motor1->SetSpeed(0.5);
-		Motor2->SetSpeed(-0.5);
+		encoder_1.Start();
+		encoder_2.Start();
+		encoder_1.SetDistancePerPulse(360.0/4096.0);
+		encoder_2.SetDistancePerPulse(360.0/4096.0);
 		
-		Wait(drive_time);
-		
+		jaguarSpeed_1 = 0.5;
+		jaguarSpeed_2 = -0.5;
+		Motor1->SetSpeed(jaguarSpeed_1);
+		Motor2->SetSpeed(jaguarSpeed_2);
+
+		while(time_driven <= drive_time) {
+			Wait(0.25);
+			time_driven += 0.25;
+			sumEncoderRates_1 += encoder_1.GetRate();
+			sumEncoderRates_2 += encoder_2.GetRate();
+			countRates += 1;
+
+			if( countRates >= periods ) {
+				fprintf(stderr,"a: motor_1: %f, enc_1 avg_1: %f, enc_1 deg: %f\n",
+						jaguarSpeed_1, 
+						sumEncoderRates_1/periods, 
+						sumEncoderRates_1/periods/360.0*60.0);
+				fprintf(stderr,"a: motor_2: %f, enc_2 avg_2: %f, enc_2 deg: %f\n", 
+						jaguarSpeed_2, 
+						sumEncoderRates_2/periods, 
+						sumEncoderRates_2/periods/360.0*60.0);
+				fprintf(stderr,"a: deltas: avg: %f, deg %f\n",
+						sumEncoderRates_1/periods - sumEncoderRates_2/periods,
+						(sumEncoderRates_2/periods/360.0*60.0) - (sumEncoderRates_1/periods/360.0*60.0)	);
+
+				adjustment = pid_controller_2->PIDCalc(
+						encoder_1.GetRate(),
+						encoder_2.GetRate());
+				jagAdjust = adjustment*0.2/700.0;
+
+				if( jagAdjust*jagAdjust > 0.05*0.05) {
+					Motor2->SetSpeed(Motor2->Get() + jagAdjust);
+					jaguarSpeed_2 = Motor2->Get();
+					fprintf(stderr,"a: Jaguar adjustment: %f\n", jagAdjust);
+				}
+			
+				if((jaguarSpeed_2 - jaguarSpeed_1) >= 0.2)
+				{
+					jaguarSpeed_2 = jaguarSpeed_1;
+					Motor2->SetSpeed(jaguarSpeed_2);
+					fprintf(stderr,"RESET: \n");
+				}
+				countRates = 0;
+				sumEncoderRates_1 = 0;
+				sumEncoderRates_2 = 0;
+				encoder_1.Reset();
+				encoder_2.Reset();
+			}
+		}
 		Motor1->SetSpeed(0.0);
 		Motor2->SetSpeed(0.0);
-
-		// Default robot drive code w/single speed and curve parameters, no real
-		// ability to adjust wheel speed based on encoder feedback other than
-		// recalculate a curvature value.
-		// Assuming we run the robot at full speed
-/*		for (float curve = -1.0; curve<=1.0  ; curve += 0.1 ) {
-			SmartDashboard::PutNumber("autonomous: curve", (double)curve);
-						myRobot.Drive(1.0, curve);
-			Wait(drive_time);
-			myRobot.Drive(0.0, 0.0); 	// stop robot
 	}
-*/
-
-		/*
-		myRobot.Drive(0.25, 0.0); 	// drive forwards half speed
-		Wait(2.0); 				//    for 2 seconds
-		myRobot.Drive(.25, 1.0);
-		Wait(1.5);
-		myRobot.Drive(.25, 0.0);
-		Wait(2.0);
-		*/
-	}
+	
 
 	/**
 	 * Runs the motors with arcade steering. 
@@ -227,7 +266,7 @@ public:
 				jagAdjust = adjustment*0.2/700.0;
 
 				if( jagAdjust*jagAdjust > 0.05*0.05) {
-					Motor4->SetSpeed(Motor4->Get() + jagAdjust);
+			 		Motor4->SetSpeed(Motor4->Get() + jagAdjust);
 					jaguarSpeed_2 = Motor4->Get();
 					fprintf(stderr,"Jaguar adjustment: %f\n", jagAdjust);
 				}
