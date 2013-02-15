@@ -22,6 +22,7 @@ float PIDController812::PIDCalc( float setPoint, float currentPoint) {
 		
 	error = currentPoint - setPoint;
 	delta_err = prev_err - error;
+	prev_err = error;
 	integral_err += error;
 	
 	fprintf(stderr, "PID data: error %f, delta_err %f, integral_err %f\n",
@@ -63,21 +64,24 @@ class RobotDemo : public SimpleRobot
 	Jaguar *Motor6;
 	Jaguar *Motor7;
 	RobotDrive *myRobot;
-	Relay spike;
-	Counter ferroDetector;
+//	Relay spike;
 	Encoder encoder_1;
 	Encoder encoder_2;
+	PIDController812 *pid_controller_1;
 	PIDController812 *pid_controller_2;
+	Counter Counter1;
+	Counter Counter2;
+//	Counter Counter3;
 	
 public:
 	RobotDemo(void):
 		leftStick(1),		// as they are declared above.
 		rightStick(2), // right stick
 		climbStick(3),
-		spike(5),
-		ferroDetector(3),  // digital I/O port 3
-		encoder_1(5,6),   // digital I/O port 5 == chan A, port 6 == chan B
-		encoder_2(8,9)	// digital I/O port 8 == chan A, port 9 == chan B
+		encoder_1(1,2), // digital I/O port 1 == chan A, port 2 == chan B
+		encoder_2(3,4),	// digital I/O port 3 == chan A, port 4 == chan B
+		Counter1(6),	// dio port 6 counter on left tower motor
+		Counter2(7)		// dio port 7 counter on right tower motor
 	{
 		Motor1 = new Jaguar(1);
 		Motor2 = new Jaguar(2);
@@ -87,9 +91,10 @@ public:
 		Motor6 = new Jaguar(6);
 		Motor7 = new Jaguar(7);
 
+		pid_controller_1 = new PIDController812;
 		pid_controller_2 = new PIDController812;
 
-		myRobot = new RobotDrive(Motor1, Motor2);
+		myRobot = new RobotDrive(Motor2, Motor1);
 		myRobot->SetExpiration(0.1);
 	}
 
@@ -98,6 +103,7 @@ public:
 	 */
 	void Autonomous(void)
 	{
+		fprintf(stderr, "in auto \n");
 		float jaguarSpeed_1 = 0.0;
 		float jaguarSpeed_2 = 0.0;
 		float jagAdjust;
@@ -189,16 +195,27 @@ public:
 		int countRates = 0;
 		const int periods = 100;
 		float adjustment;
+		float liftSpeed5 = 0.2;
+		float liftSpeed6 = 0.45;
+		int CounterPrev1, CounterPrev2;
+		float MotorSpeed5, MotorSpeed6;
+		float liftAdjust;
+		int liftAdjustCycle = 100;
 		
 		myRobot->SetSafetyEnabled(true);
 		myRobot->SetInvertedMotor(RobotDrive::kRearLeftMotor, true); //right
 		myRobot->SetInvertedMotor(RobotDrive::kRearRightMotor, true); //left
-		ferroDetector.Start();
+
+		Counter1.Start();
+		Counter2.Start();
+
+		
 		encoder_1.Start();
 		encoder_2.Start();
 		encoder_1.SetDistancePerPulse(360.0/4096.0);
 		encoder_2.SetDistancePerPulse(360.0/4096.0);
 		
+		pid_controller_1->Reset();
 		pid_controller_2->Reset();
 		
 		while (IsOperatorControl())
@@ -206,7 +223,43 @@ public:
 			//myRobot.ArcadeDrive(rightStick); // drive with arcade style (use right stick)
 		    myRobot->TankDrive(leftStick, rightStick);
 			Wait(0.005);				// wait for a motor update time
+			
+			if(rightStick.GetRawButton(1))
+			{
+				Motor7->SetSpeed(0.9);
+			}
+			if(rightStick.GetRawButton(2))
+			{
+				Motor7->SetSpeed(-0.9);
+			}
+			if(rightStick.GetRawButton(3))
+			{
+				Motor5->SetSpeed(0.0);
+				Motor6->SetSpeed(0.0);
+				Motor7->SetSpeed(0.0);
+				Wait(0.2);
 
+				Counter1.Reset();
+				Counter2.Reset();
+			}
+			
+			if(rightStick.GetRawButton(4))
+			{
+				Motor5->SetSpeed(liftSpeed5);
+				Motor6->SetSpeed(liftSpeed6);
+				Counter1.Reset();
+				Counter2.Reset();
+				pid_controller_1->Reset();
+			}
+			if(rightStick.GetRawButton(5))
+			{
+				Motor5->SetSpeed(-liftSpeed5);
+				Motor6->SetSpeed(-liftSpeed6);
+				Counter1.Reset();
+				Counter2.Reset();
+				pid_controller_1->Reset();
+			}
+			
 /* 2012-02-12
  * This code section was used for PID controller testing. It is disabled
  * in favor of TankDrive listed above
@@ -225,7 +278,23 @@ public:
 			}
 --- end of PID controller testing code 
 */
-			
+			if( Counter1.Get() != CounterPrev1 || Counter2.Get() != CounterPrev2)
+			{
+				CounterPrev1 = Counter1.Get();
+				CounterPrev2 = Counter2.Get();
+				fprintf(stderr,"lift counter1 count: %d\n", CounterPrev1);
+				fprintf(stderr,"lift counter2 count: %d\n", CounterPrev2);
+				liftAdjust=pid_controller_1->PIDCalc(Counter2.Get(),Counter1.Get());
+				fprintf(stderr,"liftAdjust: %f\n", liftAdjust);
+				MotorSpeed6 = Motor6->Get();
+				MotorSpeed5 = Motor5->Get();
+				fprintf(stderr,"motor5 speed: %f, motor6 speed: %f\n",MotorSpeed5, MotorSpeed6);
+				Motor5->SetSpeed(MotorSpeed5 + MotorSpeed5*liftAdjust/100.0);
+				fprintf(stderr,"motor5 speed: %f, motor6 speed: %f\n",
+						Motor5->Get(),
+						Motor6->Get());
+			}	
+/*
 			if(leftStick.GetRawButton(1) )
 			{
 				spike.Set(Relay::kForward);
@@ -241,12 +310,12 @@ public:
 				spike.Set(Relay::kReverse);
 				windowMotorOn = TRUE;
 			}
-			
+*/			
 			sumEncoderRates_1 += encoder_1.GetRate();
 			sumEncoderRates_2 += encoder_2.GetRate();
 			countRates += 1;
 
-			if( countRates >= periods ) {
+/*			if( countRates >= periods ) {
 				fprintf(stderr,"motor_1: %f, enc_1 avg_1: %f, enc_1 deg: %f\n",
 						jaguarSpeed_1, 
 						sumEncoderRates_1/periods, 
@@ -283,7 +352,8 @@ public:
 				encoder_1.Reset();
 				encoder_2.Reset();
 			}
-		}
+			*/
+			}
 	}
 	
 	/**
