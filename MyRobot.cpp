@@ -118,32 +118,41 @@ public:
 		//	myRobot.SetSafetyEnabled(false);
 		// Distance = velocity / time; 
 		// Assume instaneous acceleration to make things easy
-		float distance = 40.0; // feet
-		float velocity = 10.0; // feet / sec
-		float drive_time = distance / velocity; // t (sec) = d (feet) / v (feet/sec)
+		float distance = 20.0; // feet
+		float velocity = 4.2; // feet / sec
+		float drive_time = distance / velocity - 0.2; // t (sec) = d (feet) / v (feet/sec) - deceleration time
 		float time_driven = 0;
+		float drive_speed = 0.5;
+		float drive_curve = 0.0001;
 		
 		fprintf(stderr,"autonomous: drive_time %f\n", drive_time);
 		encoder_1.Start();
 		encoder_2.Start();
 		encoder_1.SetDistancePerPulse(360.0/4096.0);
 		encoder_2.SetDistancePerPulse(360.0/4096.0);
+		encoder_1.Reset();
+		encoder_2.Reset();
 		
-		jaguarSpeed_1 = 0.9;
-		jaguarSpeed_2 = -0.9;
 		fprintf(stderr,"start: encoder1 %d, encoder2 %d\n",
 				encoder_1.Get(),
 				encoder_2.Get());
+		fprintf(stderr,"distance %f, velocity %f, drive_time %f\n", distance, velocity, drive_time);
 		saveEncoder1 = encoder_1.Get();
 		saveEncoder2 = encoder_2.Get();
-		Motor1->SetSpeed(jaguarSpeed_1);
-		Motor2->SetSpeed(jaguarSpeed_2);
-		Wait(5.0);
+
+		myRobot->SetSafetyEnabled(FALSE);
+		myRobot->Drive(drive_speed,drive_curve);
+		Wait(drive_time);
+		
+		for( float v = drive_speed; v > 0.0; v = v - 0.1) {
+			myRobot->Drive(v,drive_curve);
+			Wait(0.04);
+		}
+		myRobot->Drive(0.0,0.0);
+
 		fprintf(stderr,"rates during: encoder1 %f, encoder2 %f\n",
 				encoder_1.GetRate(),
 				encoder_2.GetRate());
-		Motor1->SetSpeed(0.0);
-		Motor2->SetSpeed(0.0);
 		fprintf(stderr,"initial: encoder1 %d, encoder2 %d\n",
 				saveEncoder1,
 				saveEncoder2);
@@ -222,6 +231,7 @@ public:
 		float liftSpeed6Left = 0.80; // speed of left tower motor
 		float liftPercentOfFull = 0.30; // slow down factor for adjusting tower motor
 		float liftErrorThreshold = 0.1; // error threshold between tower counters
+		int liftDirection;
 		int CounterCur6LeftTower, CounterCur5RightTower;
 		int CounterPrev6LeftTower, CounterPrev5RightTower;
 		float MotorSpeed5, MotorSpeed6;
@@ -315,36 +325,28 @@ public:
 				// some adjustments to speed are required to
 				// bring the rotation count into alignment between
 				// the two motors. Rotation translates to distance.
-				if( fabs( (double)CounterCur6LeftTower - (double) CounterCur5RightTower) >= liftErrorThreshold)
+				if( fabs( (double)CounterCur6LeftTower - (double) CounterCur5RightTower) >= liftErrorThreshold &&
+					liftStatus != STOP )
 				{
-					if( liftStatus == UP) {
-						if(CounterCur6LeftTower > CounterCur5RightTower) {
-							fprintf(stderr, "Turning off LeftTower because Left is UP ahead of Right.\n");
-								Motor6LeftTower->SetSpeed(-liftSpeed6Left*liftPercentOfFull);
-								Motor5RightTower->SetSpeed(-liftSpeed5Right);
-						} else if (CounterCur5RightTower > CounterCur6LeftTower) {
-							fprintf(stderr, "Turning off RightTower because Right is UP ahead of Left.\n");
-								Motor6LeftTower->SetSpeed(-liftSpeed6Left);
-								Motor5RightTower->SetSpeed(-liftSpeed5Right*liftPercentOfFull);
-						} else {
-							Motor6LeftTower->SetSpeed(-liftSpeed6Left);
-							Motor5RightTower->SetSpeed(-liftSpeed5Right);
-						}
-					} 
-					else if( liftStatus == DOWN) {
-						if(CounterCur6LeftTower > CounterCur5RightTower) {
-							fprintf(stderr, "Turning off LeftTower because Left is DOWN ahead of Right.\n");
-								Motor6LeftTower->SetSpeed(liftSpeed6Left*liftPercentOfFull);
-								Motor5RightTower->SetSpeed(liftSpeed5Right);
-						} else if (CounterCur5RightTower > CounterCur6LeftTower) {
-							fprintf(stderr, "Turning off RightTower because Right is DOWN ahead of Left.\n");
-							Motor6LeftTower->SetSpeed(liftSpeed6Left);
-							Motor5RightTower->SetSpeed(liftSpeed5Right*liftPercentOfFull);
-						} else {
-							Motor6LeftTower->SetSpeed(liftSpeed6Left);
-							Motor5RightTower->SetSpeed(liftSpeed5Right);				
-						}
+					if( liftStatus == UP ) {
+						liftDirection = -1;
+					} else if( liftStatus == DOWN ) {
+						liftDirection = 1;
+					} else if( liftStatus == STOP ) {
+						// why are we here?
 					}
+					if(CounterCur6LeftTower > CounterCur5RightTower) {
+						fprintf(stderr, "Turning off LeftTower because Left is UP ahead of Right.\n");
+							Motor6LeftTower->SetSpeed(liftDirection*liftSpeed6Left*liftPercentOfFull);
+							Motor5RightTower->SetSpeed(liftDirection*liftSpeed5Right);
+					} else if (CounterCur5RightTower > CounterCur6LeftTower) {
+							fprintf(stderr, "Turning off RightTower because Right is UP ahead of Left.\n");
+								Motor6LeftTower->SetSpeed(liftDirection*liftSpeed6Left);
+								Motor5RightTower->SetSpeed(liftDirection*liftSpeed5Right*liftPercentOfFull);
+						} else {
+							Motor6LeftTower->SetSpeed(liftDirection*liftSpeed6Left);
+							Motor5RightTower->SetSpeed(liftDirection*liftSpeed5Right);
+						}
 				}
 			}
 		}
