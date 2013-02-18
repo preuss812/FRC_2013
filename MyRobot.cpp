@@ -119,11 +119,11 @@ public:
 		// Distance = velocity / time; 
 		// Assume instaneous acceleration to make things easy
 		float distance = 20.0; // feet
-		float velocity = 4.2; // feet / sec
-		float drive_time = distance / velocity - 0.2; // t (sec) = d (feet) / v (feet/sec) - deceleration time
+		float speed = 4.0; // feet / sec
+		float drive_time = distance / speed - 0.2; // t (sec) = d (feet) / v (feet/sec) - deceleration time
 		float time_driven = 0;
-		float drive_speed = 0.5;
-		float drive_curve = 0.0001;
+		float throttle_position = 0.50;
+		float curve_adjustment = 0.00007; // > 0 is right, < 0 is left
 		
 		fprintf(stderr,"autonomous: drive_time %f\n", drive_time);
 		encoder_1.Start();
@@ -136,16 +136,16 @@ public:
 		fprintf(stderr,"start: encoder1 %d, encoder2 %d\n",
 				encoder_1.Get(),
 				encoder_2.Get());
-		fprintf(stderr,"distance %f, velocity %f, drive_time %f\n", distance, velocity, drive_time);
+		fprintf(stderr,"distance %f, velocity %f, drive_time %f\n", distance, speed, drive_time);
 		saveEncoder1 = encoder_1.Get();
 		saveEncoder2 = encoder_2.Get();
 
 		myRobot->SetSafetyEnabled(FALSE);
-		myRobot->Drive(drive_speed,drive_curve);
+		myRobot->Drive(throttle_position,curve_adjustment);
 		Wait(drive_time);
 		
-		for( float v = drive_speed; v > 0.0; v = v - 0.1) {
-			myRobot->Drive(v,drive_curve);
+		for( float v = throttle_position; v > 0.0; v = v - 0.1) {
+			myRobot->Drive(v,curve_adjustment);
 			Wait(0.04);
 		}
 		myRobot->Drive(0.0,0.0);
