@@ -119,11 +119,11 @@ public:
 		// Distance = velocity / time; 
 		// Assume instaneous acceleration to make things easy
 		float distance = 20.0; // feet
-		float speed = 4.0; // feet / sec
-		float drive_time = distance / speed - 0.2; // t (sec) = d (feet) / v (feet/sec) - deceleration time
+		float speed = 4.1; // feet / sec
+		float drive_time = distance / speed - 2*0.2; // t (sec) = d (feet) / v (feet/sec) - deceleration time
 		float time_driven = 0;
-		float throttle_position = 0.50;
-		float curve_adjustment = 0.00007; // > 0 is right, < 0 is left
+		float throttle_position = 0.70;
+		float curve_adjustment = -0.00001; // > 0 is right, < 0 is left
 		
 		fprintf(stderr,"autonomous: drive_time %f\n", drive_time);
 		encoder_1.Start();
@@ -136,16 +136,25 @@ public:
 		fprintf(stderr,"start: encoder1 %d, encoder2 %d\n",
 				encoder_1.Get(),
 				encoder_2.Get());
-		fprintf(stderr,"distance %f, velocity %f, drive_time %f\n", distance, speed, drive_time);
+		fprintf(stderr,"distance %f, speed %f, throttle %f, drive_time %f\n", 
+				distance, speed, throttle_position, drive_time);
 		saveEncoder1 = encoder_1.Get();
 		saveEncoder2 = encoder_2.Get();
 
 		myRobot->SetSafetyEnabled(FALSE);
+		myRobot->SetInvertedMotor(RobotDrive::kRearLeftMotor, false); //right
+		myRobot->SetInvertedMotor(RobotDrive::kRearRightMotor, false); //left
+		
+		for( float v = 0.0; v <= throttle_position; v = v + 0.1) {
+			myRobot->Drive(v,curve_adjustment);
+			Wait(0.04);
+		}
 		myRobot->Drive(throttle_position,curve_adjustment);
 		Wait(drive_time);
+//		Wait(5.0);
 		
 		for( float v = throttle_position; v > 0.0; v = v - 0.1) {
-			myRobot->Drive(v,curve_adjustment);
+			myRobot->Drive(v,-0.0001);
 			Wait(0.04);
 		}
 		myRobot->Drive(0.0,0.0);
@@ -227,10 +236,10 @@ public:
 		const int periods = 100;
 		float adjustment;
 		float plungerSpeed = 0.50; // speed of platform screw
-		float liftSpeed5Right = 0.80; // speed of right tower motor
-		float liftSpeed6Left = 0.80; // speed of left tower motor
-		float liftPercentOfFull = 0.30; // slow down factor for adjusting tower motor
-		float liftErrorThreshold = 0.1; // error threshold between tower counters
+		float liftSpeed5Right = 0.90; // speed of right tower motor
+		float liftSpeed6Left = 0.90; // speed of left tower motor
+		float liftPercentOfFull = 0.70; // slow down factor for adjusting tower motor
+		float liftErrorThreshold = 7.9; // error threshold between tower counters
 		int liftDirection;
 		int CounterCur6LeftTower, CounterCur5RightTower;
 		int CounterPrev6LeftTower, CounterPrev5RightTower;
@@ -259,8 +268,8 @@ public:
 		
 		while (IsOperatorControl())
 		{
-			//myRobot.ArcadeDrive(rightStick); // drive with arcade style (use right stick)
-		    myRobot->TankDrive(leftStick, rightStick);
+			myRobot->ArcadeDrive(leftStick); // drive with arcade style (use right stick)
+		    //myRobot->TankDrive(leftStick, rightStick);
 			Wait(0.005);				// wait for a motor update time
 			
 			if(rightStick.GetRawButton(1))
@@ -336,7 +345,7 @@ public:
 						// why are we here?
 					}
 					if(CounterCur6LeftTower > CounterCur5RightTower) {
-						fprintf(stderr, "Turning off LeftTower because Left is UP ahead of Right.\n");
+						fprintf(stderr, "  Turning off LeftTower because Left is UP ahead of Right.\n");
 							Motor6LeftTower->SetSpeed(liftDirection*liftSpeed6Left*liftPercentOfFull);
 							Motor5RightTower->SetSpeed(liftDirection*liftSpeed5Right);
 					} else if (CounterCur5RightTower > CounterCur6LeftTower) {
