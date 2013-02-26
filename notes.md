@@ -43,3 +43,10 @@ A complete list of Classes is provided [8]. This class list is exhaustive, for e
 8. http://www.virtualroadside.com/WPILib/annotated.html
 9. http://www.virtualroadside.com/WPILib/class_p_i_d_controller.html
 10. http://www.virtualroadside.com/WPILib/_p_i_d_controller_8cpp_source.html#l00373
+
+
+# Joystick sensitivity
+
+http://www.chiefdelphi.com/forums/showpost.php?p=547561&postcount=9
+http://www.theonerobot.com/resources/exponential-drive-function
+http://www.chiefdelphi.com/media/papers/2421
