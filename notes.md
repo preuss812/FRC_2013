@@ -47,6 +47,11 @@ A complete list of Classes is provided [8]. This class list is exhaustive, for e
 
 # Joystick sensitivity
 
-http://www.chiefdelphi.com/forums/showpost.php?p=547561&postcount=9
-http://www.theonerobot.com/resources/exponential-drive-function
-http://www.chiefdelphi.com/media/papers/2421
+Basically the default controls provided in wpilib when interacting
+with the joysticks are a bit over sensitive. These are three methods
+we're investigating to solve this problem in our 2013 robot.
+
+1. http://www.chiefdelphi.com/forums/showpost.php?p=547561&postcount=9
+2. http://www.theonerobot.com/resources/exponential-drive-function
+3. http://www.chiefdelphi.com/media/papers/2421
+
