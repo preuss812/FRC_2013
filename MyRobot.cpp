@@ -60,10 +60,10 @@ class RobotDemo : public SimpleRobot
 	Jaguar *Motor1;	// left wheel
 	Jaguar *Motor2;	// right wheel
 	Jaguar *Motor3;
-	Jaguar *Motor4;
+	Jaguar *Motor4Dumper;
 	Jaguar *Motor5RightTower;
 	Jaguar *Motor6LeftTower;
-	Jaguar *Motor7;
+	Jaguar *Motor7Plunger;
 	RobotDrive *myRobot;
 //	Relay spike;
 	Encoder encoder_1;
@@ -87,10 +87,10 @@ public:
 		Motor1 = new Jaguar(1);
 		Motor2 = new Jaguar(2);
 		Motor3 = new Jaguar(3); // PWM 3
-		Motor4 = new Jaguar(4); // PWM 4
+		Motor4Dumper = new Jaguar(4); // PWM 4
 		Motor5RightTower = new Jaguar(5);
 		Motor6LeftTower = new Jaguar(6); // left tower jaguar
-		Motor7 = new Jaguar(7); // right tower jaguar
+		Motor7Plunger = new Jaguar(7); // right tower jaguar
 
 		pid_controller_1 = new PIDController812;
 		pid_controller_2 = new PIDController812;
@@ -105,15 +105,7 @@ public:
 	void Autonomous(void)
 	{
 		fprintf(stderr, "in auto \n");
-		float jaguarSpeed_1 = 0.0;
-		float jaguarSpeed_2 = 0.0;
-		float jagAdjust;
-		double sumEncoderRates_1;
-		double sumEncoderRates_2;
-		int countRates = 0;
 		int saveEncoder1, saveEncoder2;
-		const int periods = 100;
-		float adjustment;
 
 		//	myRobot.SetSafetyEnabled(false);
 		// Distance = velocity / time; 
@@ -121,7 +113,6 @@ public:
 		float distance = 20.0; // feet
 		float speed = 4.1; // feet / sec
 		float drive_time = distance / speed - 2*0.2; // t (sec) = d (feet) / v (feet/sec) - deceleration time
-		float time_driven = 0;
 		float throttle_position = 0.70;
 		float curve_adjustment = -0.00001; // > 0 is right, < 0 is left
 		
@@ -169,73 +160,56 @@ public:
 				encoder_1.Get(),
 				encoder_2.Get());
 
-/*
-		while(time_driven <= drive_time) {
-			Wait(0.25);
-			time_driven += 0.25;
-			sumEncoderRates_1 += encoder_1.GetRate();
-			sumEncoderRates_2 += encoder_2.GetRate();
-			countRates += 1;
-
-			if( countRates >= periods ) {
-				fprintf(stderr,"a: motor_1: %f, enc_1 avg_1: %f, enc_1 deg: %f\n",
-						jaguarSpeed_1, 
-						sumEncoderRates_1/periods, 
-						sumEncoderRates_1/periods/360.0*60.0);
-				fprintf(stderr,"a: motor_2: %f, enc_2 avg_2: %f, enc_2 deg: %f\n", 
-						jaguarSpeed_2, 
-						sumEncoderRates_2/periods, 
-						sumEncoderRates_2/periods/360.0*60.0);
-				fprintf(stderr,"a: deltas: avg: %f, deg %f\n",
-						sumEncoderRates_1/periods - sumEncoderRates_2/periods,
-						(sumEncoderRates_2/periods/360.0*60.0) - (sumEncoderRates_1/periods/360.0*60.0)	);
-
-				adjustment = pid_controller_2->PIDCalc(
-						encoder_1.GetRate(),
-						encoder_2.GetRate());
-				jagAdjust = adjustment*0.2/700.0;
-
-				if( jagAdjust*jagAdjust > 0.05*0.05) {
-					Motor2->SetSpeed(Motor2->Get() + jagAdjust);
-					jaguarSpeed_2 = Motor2->Get();
-					fprintf(stderr,"a: Jaguar adjustment: %f\n", jagAdjust);
-				}
-			
-				if((jaguarSpeed_2 - jaguarSpeed_1) >= 0.2)
-				{
-					jaguarSpeed_2 = jaguarSpeed_1;
-					Motor2->SetSpeed(jaguarSpeed_2);
-					fprintf(stderr,"RESET: \n");
-				}
-				countRates = 0;
-				sumEncoderRates_1 = 0;
-				sumEncoderRates_2 = 0;
-				encoder_1.Reset();
-				encoder_2.Reset();
-			}
-		}
-
-		Motor1->SetSpeed(0.0);
-		Motor2->SetSpeed(0.0);
-*/
 		}
 	
-
+	// This is a function that is designed to provide an exponential
+	// based power curve with a dead spot in the middle. It should allow
+	// the robot to be driven smoother and more naturally by the operator.
+	// Thanks to the team at http://theonerobot.com/resources/exponential-drive-function
+	// for their excellent and professional writeup.
+	
+	float expDrive(float joystickValue)
+	{
+		const int cJoyDead = 15;	// dead area of the power curve
+		const int cMotorMin = 8;	// minimum drive motor power
+		const float cDriveExp = 2.5; // exponent for drive power calculations (1 = linear, 2 = squared)
+		const float cJoyStickMin = 0.01;
+		int joyScaled;
+		int joyMax;
+		int joySign;
+		int joyLive;
+		float pwrOut;
+		float pwrOutUnscaled;
+		
+		pwrOut = 0.0;
+		joySign = 1;
+		if(fabs(joystickValue) >= cJoyStickMin)
+		{
+			fprintf(stderr, "expDrive joystickValue %f\n", joystickValue);
+			joyScaled = int(joystickValue * 128);		// joystickValue ranges from -1.0 to 1.0, need to scale to -128 to 128
+			joyMax = 128 - cJoyDead;  // 128 max of PWM range
+			if(joyScaled < 0)
+				joySign = -1;
+			joyLive = abs(joyScaled) - cJoyDead;
+			if(joyLive < 0)
+				return pwrOut;
+			
+			pwrOutUnscaled = joySign * (cMotorMin + ((100 - cMotorMin) * pow(joyLive, cDriveExp) / 
+					pow(joyMax, cDriveExp)));
+			fprintf(stderr,"expDrive joystickValue %f, joyScaled %d, joyMax %d, joySign %d, pwrOutUnscaled %f, \n",
+					joystickValue, joyScaled, joyMax, joySign, pwrOutUnscaled);
+			pwrOut = pwrOutUnscaled / 100.0;
+		}
+		if(pwrOut > 0.01) 
+			fprintf(stderr, "expDrive pwrOut %f\n", pwrOut);
+		return pwrOut;
+	}
 	/**
 	 * Runs the motors with arcade steering. 
 	 */
 	void OperatorControl(void)
 	{
-		bool windowMotorOn = FALSE;
-		float jaguarSpeed_1 = 0.0;
-		float jaguarSpeed_2 = 0.0;
-		float jagAdjust;
-		double sumEncoderRates_1;
-		double sumEncoderRates_2;
-		int countRates = 0;
-		const int periods = 100;
-		float adjustment;
-		float plungerSpeed = 0.50; // speed of platform screw
+		float plungerSpeed = 0.75; // speed of platform screw
 		float liftSpeed5Right = 0.90; // speed of right tower motor
 		float liftSpeed6Left = 0.90; // speed of left tower motor
 		float liftPercentOfFull = 0.70; // slow down factor for adjusting tower motor
@@ -243,9 +217,6 @@ public:
 		int liftDirection;
 		int CounterCur6LeftTower, CounterCur5RightTower;
 		int CounterPrev6LeftTower, CounterPrev5RightTower;
-		float MotorSpeed5, MotorSpeed6;
-		float liftAdjust;
-		float liftCounterRatio;
 		enum {DOWN, STOP, UP} liftStatus;
 		
 		myRobot->SetSafetyEnabled(true);
@@ -268,23 +239,25 @@ public:
 		
 		while (IsOperatorControl())
 		{
-			myRobot->ArcadeDrive(leftStick); // drive with arcade style (use right stick)
+		//	myRobot->ArcadeDrive(leftStick); // drive with arcade style (use right stick)
 		    //myRobot->TankDrive(leftStick, rightStick);
+			myRobot->ArcadeDrive(expDrive(leftStick.GetY()), expDrive(leftStick.GetX()), TRUE);
 			Wait(0.005);				// wait for a motor update time
 			
 			if(rightStick.GetRawButton(1))
 			{
-				Motor7->SetSpeed(plungerSpeed);
+				Motor7Plunger->SetSpeed(plungerSpeed);
 			}
 			if(rightStick.GetRawButton(2))
 			{
-				Motor7->SetSpeed(-plungerSpeed);
+				Motor7Plunger->SetSpeed(-plungerSpeed);
 			}
 			if(rightStick.GetRawButton(3))
 			{
+				Motor4Dumper->SetSpeed(0.0);
 				Motor5RightTower->SetSpeed(0.0);
 				Motor6LeftTower->SetSpeed(0.0);
-				Motor7->SetSpeed(0.0);
+				Motor7Plunger->SetSpeed(0.0);
 				Wait(0.3);
 
 				Counter6LeftTower.Reset();
@@ -311,6 +284,11 @@ public:
 				pid_controller_1->Reset();
 				liftStatus = UP;
 			}
+			if(rightStick.GetRawButton(8))  // dumper up
+				Motor4Dumper->SetSpeed(0.7);
+			
+			if(rightStick.GetRawButton(9))   // dumper down
+				Motor4Dumper->SetSpeed(-0.2);
 			
 			CounterCur6LeftTower = Counter6LeftTower.Get();
 			CounterCur5RightTower = Counter7RightTower.Get();
